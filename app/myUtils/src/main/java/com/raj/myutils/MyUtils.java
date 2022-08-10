@@ -55,6 +55,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -63,27 +64,17 @@ import java.util.zip.ZipOutputStream;
 
 public class MyUtils {
     public static String TAG = "STORAGE_TAG";
-    public static boolean issave = false;
     private static int BUFFER_SIZE = 6 * 1024;
-    public static long totalapksize = 0;
-    public static long totalImgsize = 0;
-    public static long totalVideosize = 0;
-    public static long totalAudiosize = 0;
-    public static long totalDocssize = 0;
-
-    public static int totalImg,totalVideo,totalAudio,totalApks,totalDocs;
 
     public static String create_folder(String foldername) {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             File folder = new File(Environment.getExternalStorageDirectory() + "/" + foldername);
-            Log.d(TAG, "createDir:" + folder);
             if (!folder.exists()) {
                 folder.mkdirs();
             }
             return folder.getAbsolutePath();
         } else {
-            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC + File.separator + "/" + foldername)));
-            Log.d(TAG, "createDir:" + folder);
+            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS + File.separator + "/" + foldername)));
             if (!folder.exists()) {
                 folder.mkdirs();
             }
@@ -95,14 +86,14 @@ public class MyUtils {
     public static String create_hidden_folder(String foldername) {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             File folder = new File(Environment.getExternalStorageDirectory() + "/." + foldername);
-            Log.d(TAG, "createDir:" + folder);
+
             if (!folder.exists()) {
                 folder.mkdirs();
             }
             return folder.getAbsolutePath();
         } else {
-            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS + File.separator + "/." + foldername)));
-            Log.d(TAG, "createDir:" + folder);
+            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS + File.separator + "/." + foldername)));
+
             if (!folder.exists()) {
                 folder.mkdirs();
             }
@@ -113,13 +104,13 @@ public class MyUtils {
     public static String create_folder_with_sub_folder(String foldername, String subfolder) {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             File folder = new File(Environment.getExternalStorageDirectory() + "/" + foldername + "/" + subfolder);
-            Log.d(TAG, "createDir:" + folder);
+
             if (!folder.exists()) {
                 folder.mkdirs();
             }
             return folder.getAbsolutePath();
         } else {
-            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + File.separator + foldername + File.separator + subfolder)));
+            File folder = new File(String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS + File.separator + foldername + File.separator + subfolder)));
             Log.d(TAG, "createDir:" + folder);
             if (!folder.exists()) {
                 folder.mkdirs();
@@ -189,10 +180,9 @@ public class MyUtils {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
             fileOutputStream.flush();
             fileOutputStream.close();
-            if (issave) {
-                Toast(context, "Saved Successfully");
 
-            }
+            Toast(context, "Saved Successfully");
+
             String absolutePath = file3.getAbsolutePath();
             MediaScannerConnection.scanFile(context, new String[]{file3.getPath()}, null, null);
             return absolutePath;
@@ -226,24 +216,24 @@ public class MyUtils {
             listoffiles.lastModified();
             File[] songlist = listoffiles.listFiles();
             ///sort by date modified
-//            if (songlist != null && songlist.length > 1) {
-//                Collections.sort(Arrays.asList(songlist), new Comparator<File>() {
-//                    public int compare(File o1, File o2) {
-//                        long lastModifiedO1 = o1.lastModified();
-//                        long lastModifiedO2 = o2.lastModified();
-//                        return (lastModifiedO2 < lastModifiedO1) ? -1 : ((lastModifiedO1 > lastModifiedO2) ? 1 : 0);
-//                    }
-//                });
-//            }
-
             if (songlist != null && songlist.length > 1) {
-                Arrays.sort(songlist, new Comparator<File>() {
-                    @Override
-                    public int compare(File object1, File object2) {
-                        return object1.getName().compareTo(object2.getName());
+                Collections.sort(Arrays.asList(songlist), new Comparator<File>() {
+                    public int compare(File o1, File o2) {
+                        long lastModifiedO1 = o1.lastModified();
+                        long lastModifiedO2 = o2.lastModified();
+                        return (lastModifiedO2 < lastModifiedO1) ? -1 : ((lastModifiedO1 > lastModifiedO2) ? 1 : 0);
                     }
                 });
             }
+///sort by name
+//            if (songlist != null && songlist.length > 1) {
+//                Arrays.sort(songlist, new Comparator<File>() {
+//                    @Override
+//                    public int compare(File object1, File object2) {
+//                        return object1.getName().compareTo(object2.getName());
+//                    }
+//                });
+//            }
             if (songlist != null) {
                 if (songlist.length != 0) {
 
@@ -652,7 +642,7 @@ public class MyUtils {
         return false;
     }
 
-    public static void statusCheck(Context context) {
+    public static void locationStatusCheck(Context context) {
         final LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
         if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -764,71 +754,66 @@ public class MyUtils {
         v.setLayoutParams(layoutParams);
     }
 
-    public static Long getAllShownImagesPath(Activity activity) {
+    public static ArrayList<String> getAllShownImagesPath(Activity activity) {
         Uri uri;
         Cursor cursor;
-        int column_index_data, column_index_folder_name;
-        Long absolutePathOfImage = 0L;
+        ArrayList<String> pathList = new ArrayList<>();
         uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-
-        String[] projection = {MediaStore.MediaColumns.SIZE, MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
-
+        String[] projection = {
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.SIZE,
+        };
         cursor = activity.getContentResolver().query(uri, projection, null, null, null);
-
-        column_index_data = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
-        column_index_folder_name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
         while (cursor.moveToNext()) {
-            if (cursor.getLong(column_index_data) != 0)
-                absolutePathOfImage = absolutePathOfImage + cursor.getLong(column_index_data);
+            String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA));
+            pathList.add(path);
         }
-        return absolutePathOfImage;
+        return pathList;
     }
 
-    public static Long getAllShownVideo(Activity activity) {
+    public static ArrayList<String> getAllShownVideo(Activity activity) {
         Uri uri;
         Cursor cursor;
-        int column_index_data, column_index_folder_name;
+        ArrayList<String> pathList = new ArrayList<>();
         Long absolutePathOfImage = 0L;
         uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
 
-        String[] projection = {MediaStore.MediaColumns.SIZE, MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
-
+        String[] projection = {
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.SIZE,
+        };
         cursor = activity.getContentResolver().query(uri, projection, null, null, null);
-
-        column_index_data = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
-        column_index_folder_name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
+        String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA));
         while (cursor.moveToNext()) {
-            if (cursor.getLong(column_index_data) != 0)
-                absolutePathOfImage = absolutePathOfImage + cursor.getLong(column_index_data);
+            pathList.add(path);
         }
-        return absolutePathOfImage;
+        return pathList;
     }
 
-    public static Long getAllShownAudio(Activity activity) {
+    public static ArrayList<String> getAllShownAudio(Activity activity) {
         Uri uri;
         Cursor cursor;
-        int column_index_data, column_index_folder_name;
+        ArrayList<String> pathList = new ArrayList<>();
         Long absolutePathOfImage = 0L;
-
         uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
 
-        String[] projection = {MediaStore.MediaColumns.SIZE, MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
-
+        String[] projection = {
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.SIZE,
+        };
         cursor = activity.getContentResolver().query(uri, projection, null, null, null);
-
-        column_index_data = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
-        column_index_folder_name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
+        String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA));
         while (cursor.moveToNext()) {
-            if (cursor.getLong(column_index_data) != 0)
-                absolutePathOfImage = absolutePathOfImage + cursor.getLong(column_index_data);
+            pathList.add(path);
         }
-        return absolutePathOfImage;
+        return pathList;
     }
 
 
-    public static void getaudiolist(Context context) {
+    public static Long getaudiosize(Context context) {
         String INTERNAL_STORAGE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath();
         Uri storage = MediaStore.Files.getContentUri("external");
+        long size = 0;
         String[] projection = {
                 MediaStore.Files.FileColumns.DATA,
                 MediaStore.Files.FileColumns.SIZE,
@@ -838,19 +823,21 @@ public class MyUtils {
                 MediaStore.Files.FileColumns.DATA + " like ?  ";
         String[] selectionArgsPdf = new String[]{INTERNAL_STORAGE_PATH + "%", "%" + ".mp3%", "%" + ".wav"};
         Cursor c = context.getContentResolver().query(storage, projection, selectionMimeType, selectionArgsPdf, null);
+
         if (c != null && c.moveToFirst()) {
             do {
-                long size = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
-                totalAudiosize = totalAudiosize + size;
-                totalAudio=totalAudio+1;
+                long l = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
+                size += l;
             } while (c.moveToNext());
         } else {
         }
+        return size;
     }
 
-    public static void getimglist(Context context) {
+    public static Long getimglistSize(Context context) {
         String INTERNAL_STORAGE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath();
         Uri storage = MediaStore.Files.getContentUri("external");
+        long size = 0;
         String[] projection = {
                 MediaStore.Files.FileColumns.DATA,
                 MediaStore.Files.FileColumns.SIZE,
@@ -864,17 +851,18 @@ public class MyUtils {
         Cursor c = context.getContentResolver().query(storage, projection, selectionMimeType, selectionArgsPdf, null);
         if (c != null && c.moveToFirst()) {
             do {
-                long size = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
-                totalImgsize = totalImgsize + size;
-                totalImg = totalImg+1;
+                long l = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
+                size += l;
             } while (c.moveToNext());
         } else {
         }
+        return size;
     }
 
-    public static void getvideolist(Context context) {
+    public static Long getvideolistSize(Context context) {
         String INTERNAL_STORAGE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath();
         Uri storage = MediaStore.Files.getContentUri("external");
+        long size = 0;
         String[] projection = {
                 MediaStore.Files.FileColumns.DATA,
                 MediaStore.Files.FileColumns.SIZE,
@@ -885,17 +873,18 @@ public class MyUtils {
         Cursor c = context.getContentResolver().query(storage, projection, selectionMimeType, selectionArgsPdf, null);
         if (c != null && c.moveToFirst()) {
             do {
-                long size = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
-                totalVideosize = totalVideosize + size;
-                totalVideo=totalVideo+1;
+                long l = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
+                size += l;
             } while (c.moveToNext());
         } else {
         }
+        return size;
     }
 
-    public static void getapklist(Context context) {
+    public static Long getapklistSize(Context context) {
         String INTERNAL_STORAGE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath();
         Uri storage = MediaStore.Files.getContentUri("external");
+        long size = 0;
         String[] projection = {
                 MediaStore.Files.FileColumns.DATA,
                 MediaStore.Files.FileColumns.SIZE,
@@ -906,15 +895,16 @@ public class MyUtils {
         Cursor c = context.getContentResolver().query(storage, projection, selectionMimeType, selectionArgsPdf, null);
         if (c != null && c.moveToFirst()) {
             do {
-                long size = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
-                totalapksize = totalapksize + size;
-                totalApks = totalApks+1;
+                long l = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
+                size += l;
             } while (c.moveToNext());
         } else {
         }
+        return size;
     }
 
-    public static void getDocumentlist(Context context) {
+    public static Long getDocumentlistSize(Context context) {
+        long size = 0;
         String INTERNAL_STORAGE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath();
         Uri storage = MediaStore.Files.getContentUri("external");
         String[] projection = {
@@ -933,13 +923,14 @@ public class MyUtils {
         Cursor c = context.getContentResolver().query(storage, projection, selectionMimeType, selectionArgsPdf, null);
         if (c != null && c.moveToFirst()) {
             do {
-                long size = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
-                totalDocssize = totalDocssize + size;
-                totalDocs=totalDocs+1;
+                long l = c.getInt(c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE));
+                size += l;
             } while (c.moveToNext());
         } else {
         }
+        return size;
     }
+
     public static long getFileSize(final File file) {
 
         if (file == null || !file.exists())
@@ -972,17 +963,17 @@ public class MyUtils {
             // 1 = move the file, 2 = copy the file
             int actionChoice = 2;
             // moving the file to another directory
-            if(actionChoice ==1){
-                if(sourceLocation.renameTo(targetLocation)){
+            if (actionChoice == 1) {
+                if (sourceLocation.renameTo(targetLocation)) {
                     Log.v(TAG, "Move file successful.");
-                }else{
+                } else {
                     Log.v(TAG, "Move file failed.");
                 }
             }
             // we will copy the file
-            else{
+            else {
                 // make sure the target file exists
-                if(sourceLocation.exists()){
+                if (sourceLocation.exists()) {
 
                     InputStream in = new FileInputStream(sourceLocation);
                     OutputStream out = new FileOutputStream(targetLocation);
@@ -1000,7 +991,7 @@ public class MyUtils {
 
                     Log.v(TAG, "Copy file successful.");
 
-                }else{
+                } else {
                     Log.v(TAG, "Copy file failed. Source file missing.");
                 }
 
@@ -1008,27 +999,26 @@ public class MyUtils {
 
         } catch (NullPointerException e) {
             e.printStackTrace();
-            Log.d(TAG, "copyFile: err "+e.getMessage());
+            Log.d(TAG, "copyFile: err " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            Log.d(TAG, "copyFile: er "+e.getMessage());
+            Log.d(TAG, "copyFile: er " + e.getMessage());
         }
 
     }
 
-    public static void moveFile(String inputPath , String outputPath) {
+    public static void moveFile(String inputPath, String outputPath) {
 
         InputStream in = null;
         OutputStream out = null;
         try {
             //create output directory if it doesn't exist
-            File dir = new File (outputPath);
-            if (!dir.exists())
-            {
+            File dir = new File(outputPath);
+            if (!dir.exists()) {
                 dir.getParentFile().mkdirs();
             }
-            in = new FileInputStream(inputPath );
-            out = new FileOutputStream(outputPath );
+            in = new FileInputStream(inputPath);
+            out = new FileOutputStream(outputPath);
 
             byte[] buffer = new byte[1024];
             int read;
@@ -1042,14 +1032,11 @@ public class MyUtils {
             out.close();
             out = null;
             // delete the original file
-            new File(inputPath ).delete();
-        }
-
-        catch (FileNotFoundException fnfe1) {
-            Log.d(TAG, "moveFile: errr " +fnfe1.getMessage());
-        }
-        catch (Exception e) {
-            Log.d(TAG, "moveFile: errr1  " +e.getMessage());
+            new File(inputPath).delete();
+        } catch (FileNotFoundException fnfe1) {
+            Log.d(TAG, "moveFile: errr " + fnfe1.getMessage());
+        } catch (Exception e) {
+            Log.d(TAG, "moveFile: errr1  " + e.getMessage());
         }
 
     }
